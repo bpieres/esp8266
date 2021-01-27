@@ -1,0 +1,192 @@
+#include <DHT.h>
+#include <DHT_U.h>
+#include <Adafruit_GFX.h>    // Core graphics library
+#include <Adafruit_ST7789.h> // Hardware-specific library for ST7789
+#include <SPI.h>
+#include <ESP8266WiFi.h>
+
+
+
+#define TFT_CS      -1
+#define TFT_RST     16                                            
+#define TFT_DC      5
+#define SCR_WD   240
+#define SCR_HT   240
+#define DHTPIN 2     
+#define DHTTYPE DHT11   
+DHT dht(DHTPIN, DHTTYPE);
+
+
+#define NUMFLAKES 10
+#define XPOS 0
+#define YPOS 1
+//#define DELTAY 2
+
+
+#define LOGO16_GLCD_HEIGHT 16 
+#define LOGO16_GLCD_WIDTH  16 
+
+static const unsigned char PROGMEM logo16_glcd_bmp[] =
+{ B00000000, B11000000,
+  B00000001, B11000000,
+  B00000001, B11000000,
+  B00000011, B11100000,
+  B11110011, B11100000,
+  B11111110, B11111000,
+  B01111110, B11111111,
+  B00110011, B10011111,
+  B00011111, B11111100,
+  B00001101, B01110000,
+  B00011011, B10100000,
+  B00111111, B11100000,
+  B00111111, B11110000,
+  B01111100, B11110000,
+  B01110000, B01110000,
+  B00000000, B00110000 };
+
+
+const char* ssid = "xxxxx"; //Nombre de la red WiFi a la que nos vamos a conectar
+const char* password = "xxxxxx"; //Contrasena de la red WiFi a la que nos vamos a conectar
+
+Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST); //set pins ST7789
+
+
+
+void setup()
+{
+  Serial.begin(9600);
+ /* Inicializamos la pantalla */
+ // if the display has CS pin try with SPI_MODE0
+  //tft.init(240, 240);    // Init ST7789 display 240x240 pixel
+  //tft.init(SCR_WD, SCR_HT);
+    tft.init(240, 240, SPI_MODE2);    // Init ST7789 display 240x240 pixel
+  tft.setRotation(2);
+
+
+   tft.fillScreen(ST77XX_RED);
+  delay(100);
+  tft.fillScreen(ST77XX_GREEN);
+  delay(100);
+  tft.fillScreen(ST77XX_BLUE);
+  delay(100);
+  tft.fillScreen(ST77XX_BLACK);
+
+ /* Mostramos la pantalla de bienvenida */
+ tft.fillScreen(ST77XX_BLACK);
+ tft.setTextSize(3);
+ tft.setTextColor(ST77XX_RED,ST77XX_BLACK);
+ tft.setCursor(50, 80);
+ tft.println("pier.es");
+ //tft.println("&#10084;");
+ //drawSymbol(0,20, MY_HEART_SUIT,ST77XX_RED,0,2);
+ delay (3000);
+ /*Mostrar red en pantala*/
+ tft.fillScreen(ST77XX_BLACK);
+ tft.setTextSize(2);
+ tft.println("Connecting to: ");
+ delay (3000);
+ //Serial.println("Connecting to:");
+ //tft.drawChar(0, 32, ssid, YELLOW, BLACK, 2 );
+
+
+ /*Conectarnos a la red WiFi*/
+ WiFi.begin(ssid, password);
+
+ while (WiFi.status() != WL_CONNECTED) {
+ delay(500);
+ /*Mostrar nuestra IP*/
+ String ip = WiFi.localIP().toString();
+ tft.fillScreen(ST77XX_BLACK);
+  tft.setCursor(0, 20);
+ tft.println("Red:");
+ tft.println(ssid);
+  delay(500);
+  //Serial.println("Red:");  
+ //tft.drawChar(40, 0, ssid, YELLOW, BLACK, 2 );
+ tft.println("IP address: ");
+  //Serial.println('IP address:');
+ tft.println(ip);
+ //tft.fillScreen(ST77XX_BLACK);
+ }
+}
+
+
+void loop(){
+  showTemp();
+ tft.fillScreen(ST77XX_BLACK);
+  
+  }
+
+
+  void showTemp(void) {   // function to read and display temperature
+   delay(2000);// Wait a few seconds for sensor to measure
+  
+  float h = dht.readHumidity();
+  // Read temperature as Celsius
+  float t = dht.readTemperature();
+  // Read temperature as Fahrenheit
+  float f = dht.readTemperature(true);
+  
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(h) || isnan(t) || isnan(f)) {
+   Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  
+  delay(1000);
+  
+  tft.fillScreen(ST77XX_BLACK);
+  notehum(h);
+  delay(2000);
+  
+  tft.fillScreen(ST77XX_BLACK);
+  notetemp(t,'C'); 
+  delay(2000);  
+ 
+   tft.fillScreen(ST77XX_BLACK);
+   notetemp(f,'F');   
+   delay(2000); 
+}
+void notehum(float hum)
+{ tft.drawRect(1, 1, tft.width()-1, tft.height()-1, ST77XX_WHITE);  
+   tft.setTextSize(3);
+    tft.setCursor(15,10);
+  tft.print(hum);
+  tft.setCursor(110,10);
+  tft.print("%"); 
+    tft.setCursor(130,10);    
+  tft.print("H"); 
+   tft.println();
+  
+}
+void notetemp(float temp, char C_F)   
+ {
+ tft.drawRect(1, 1, tft.width()-1, tft.height()-1, ST77XX_WHITE);  
+  tft.setTextColor(ST77XX_WHITE);   
+  tft.setTextSize(2);       
+  tft.setCursor(114,3);
+  tft.print("o");            
+  tft.setTextSize(3);
+  tft.setCursor(135,10);    
+  tft.print(C_F);            
+
+ if(temp >=100 || temp < 0){    
+    tft.setTextSize(3);
+    tft.setCursor(15,10);
+ }
+ else if(temp < 10 && temp >= 0){  
+  tft.setTextSize(3);
+  tft.setCursor(25,6);
+ }
+
+ else
+ {
+    tft.setTextSize(3);   
+    tft.setCursor(10,6);
+ }
+
+  tft.print(temp);  
+  tft.println();
+  
+ }
